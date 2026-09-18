@@ -118,6 +118,7 @@ function resetIpcEvents() {
     IpcChannels.CloseWindow,
     IpcChannels.ThemeChanged,
     IpcChannels.UpdateNativeTheme,
+    IpcChannels.SetZoomFactor,
     IpcChannels.UpdatePlayerState,
     IpcChannels.SetDiscordRpcActivity,
     IpcChannels.ClearDiscordRpcActivity,
@@ -186,6 +187,13 @@ export function setupIpcEvents(window: BrowserWindow | null) {
 
   ipcMain.on(IpcChannels.UpdateNativeTheme, (_, isDark: boolean) => {
     nativeTheme.themeSource = isDark ? 'dark' : 'light'
+  })
+
+  ipcMain.on(IpcChannels.SetZoomFactor, (_, factor: number) => {
+    if (!Number.isFinite(factor)) return
+
+    const safeFactor = Math.min(1.5, Math.max(0.8, factor))
+    window.webContents.setZoomFactor(safeFactor)
   })
 
   ipcMain.on(

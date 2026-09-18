@@ -662,6 +662,12 @@
           "info": "If enabled, when accessing the big player, the app will automatically enter fullscreen mode."
         }
       },
+      "zoom": {
+        "group": "Interface Scale",
+        "description": "Adjust the size of the entire interface for your display.",
+        "label": "Scale",
+        "info": "Choose from 80%, 90%, 100%, 110%, 125%, or 150%. The default is 100%."
+      },
       "colors": {
         "group": "Dynamic Colors",
         "description": "Select whether the app should use the dominant color from the currently playing album art as the background.",

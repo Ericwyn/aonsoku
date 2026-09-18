@@ -32,6 +32,8 @@ const api: IAonsokuAPI = {
     ipcRenderer.send(IpcChannels.ThemeChanged, color),
   setNativeTheme: (isDark) =>
     ipcRenderer.send(IpcChannels.UpdateNativeTheme, isDark),
+  setZoomFactor: (factor) =>
+    ipcRenderer.send(IpcChannels.SetZoomFactor, factor),
   downloadFile: (payload) =>
     ipcRenderer.send(IpcChannels.HandleDownloads, payload),
   downloadCompletedListener: (func) => {

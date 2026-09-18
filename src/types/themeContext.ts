@@ -28,4 +28,6 @@ export enum Theme {
 export interface IThemeContext {
   theme: Theme
   setTheme: (theme: Theme) => void
+  zoomPercent: number
+  setZoomPercent: (value: number) => void
 }

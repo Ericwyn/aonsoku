@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer'
 import { createWithEqualityFn } from 'zustand/traditional'
 import { IThemeContext, Theme } from '@/types/themeContext'
 import { getValidThemeFromEnv } from '@/utils/theme'
+import { normalizeZoomPercent } from '@/utils/zoom'
 
 const appThemeFromEnv = getValidThemeFromEnv()
 
@@ -16,6 +17,12 @@ export const useThemeStore = createWithEqualityFn<IThemeContext>()(
           setTheme: (theme: Theme) => {
             set((state) => {
               state.theme = theme
+            })
+          },
+          zoomPercent: 100,
+          setZoomPercent: (value: number) => {
+            set((state) => {
+              state.zoomPercent = normalizeZoomPercent(value)
             })
           },
         })),
@@ -36,7 +43,10 @@ export const useThemeStore = createWithEqualityFn<IThemeContext>()(
             }
           }
 
-          return merge(currentState, persistedState)
+          const merged = merge(currentState, persistedState)
+          merged.zoomPercent = normalizeZoomPercent(merged.zoomPercent)
+
+          return merged
         },
       },
     ),

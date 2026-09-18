@@ -19,6 +19,7 @@ export enum IpcChannels {
   CloseWindow = 'close-window',
   ThemeChanged = 'theme-changed',
   UpdateNativeTheme = 'update-native-theme',
+  SetZoomFactor = 'set-zoom-factor',
   HandleDownloads = 'handle-downloads',
   DownloadCompleted = 'download-completed',
   DownloadFailed = 'download-failed',
@@ -73,6 +74,7 @@ export interface IAonsokuAPI {
   closeWindow: () => void
   setTitleBarOverlayColors: (colors: OverlayColors) => void
   setNativeTheme: (isDark: boolean) => void
+  setZoomFactor: (factor: number) => void
   downloadFile: (payload: IDownloadPayload) => void
   downloadCompletedListener: (func: (fileId: string) => void) => void
   downloadFailedListener: (func: (fileId: string) => void) => void
