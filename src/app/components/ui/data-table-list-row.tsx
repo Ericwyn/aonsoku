@@ -1,6 +1,6 @@
 import { Cell, flexRender, Row } from '@tanstack/react-table'
 import clsx from 'clsx'
-import { MouseEvent, memo, TouchEvent, useMemo } from 'react'
+import { DragEvent, MouseEvent, memo, TouchEvent, useMemo } from 'react'
 import { ContextMenuProvider } from '@/app/components/table/context-menu'
 import { usePlayerCurrentSong } from '@/store/player.store'
 import { ColumnDefType } from '@/types/react-table/columnDef'
@@ -17,6 +17,13 @@ interface TableRowProps<TData> {
   getContextMenuOptions: (row: Row<TData>) => JSX.Element | undefined
   dataType?: 'song' | 'artist' | 'playlist' | 'radio'
   pageType?: 'general' | 'queue'
+  enableReordering?: boolean
+  isDragging?: boolean
+  isDragOver?: boolean
+  onDragStart?: (event: DragEvent<HTMLDivElement>) => void
+  onDragOver?: (event: DragEvent<HTMLDivElement>) => void
+  onDrop?: (event: DragEvent<HTMLDivElement>) => void
+  onDragEnd?: () => void
 }
 
 let isTap = false
@@ -31,6 +38,13 @@ export function TableListRow<TData>({
   getContextMenuOptions,
   dataType = 'song',
   pageType = 'general',
+  enableReordering = false,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: TableRowProps<TData>) {
   const currentSong = usePlayerCurrentSong()
 
@@ -78,11 +92,19 @@ export function TableListRow<TData>({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
         onContextMenu={(e) => handleClicks(e, row)}
+        draggable={enableReordering}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
         className={clsx(
           'group/tablerow w-[calc(100%-10px)] flex flex-row transition-colors',
           'data-[state=selected]:bg-foreground/30 hover:bg-foreground/20',
+          isQueue && enableReordering && 'cursor-grab active:cursor-grabbing',
           isQueue && 'rounded-md',
           isRowSongActive && 'row-active bg-foreground/20',
+          isDragging && 'opacity-40',
+          isDragOver && !isDragging && 'ring-2 ring-inset ring-primary/70',
         )}
         style={{
           height: `${virtualRow.size}px`,

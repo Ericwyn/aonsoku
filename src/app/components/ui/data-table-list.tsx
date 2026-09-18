@@ -25,8 +25,10 @@ import {
 } from 'react'
 import { isMacOs } from 'react-device-detect'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { QueueMenuOptions } from '@/app/components/queue/menu-options'
 import { SongMenuOptions } from '@/app/components/song/menu-options'
 import { SelectedSongsMenuOptions } from '@/app/components/song/selected-options'
+import { useQueueReorder } from '@/app/hooks/use-queue-reorder'
 import { ColumnFilter } from '@/types/columnFilter'
 import { ColumnDefType } from '@/types/react-table/columnDef'
 import { ISong } from '@/types/responses/song'
@@ -68,6 +70,7 @@ interface DataTableProps<TData, TValue> {
   enableSorting?: boolean
   sorting?: SortingState
   onSortingChange?: OnChangeFn<SortingState>
+  enableReordering?: boolean
 }
 
 export function DataTableList<TData, TValue>({
@@ -88,6 +91,7 @@ export function DataTableList<TData, TValue>({
   enableSorting = false,
   sorting: controlledSorting,
   onSortingChange,
+  enableReordering = false,
 }: DataTableProps<TData, TValue>) {
   const newColumns = columns.filter((column) => {
     return columnFilter?.includes(column.id as ColumnFilter)
@@ -98,6 +102,7 @@ export function DataTableList<TData, TValue>({
   const activeSorting = controlledSorting ?? sorting
   const [rowSelection, setRowSelection] = useState({})
   const [lastRowSelected, setLastRowSelected] = useState<number | null>(null)
+  const queueReorder = useQueueReorder()
 
   const selectedRows = useMemo(
     () => Object.keys(rowSelection).map(Number),
@@ -197,6 +202,16 @@ export function DataTableList<TData, TValue>({
     (row: Row<TData>) => {
       if (!showContextMenu) return undefined
 
+      if (pageType === 'queue') {
+        return (
+          <QueueMenuOptions
+            song={row.original as ISong}
+            index={row.index}
+            queueLength={data.length}
+          />
+        )
+      }
+
       if (dataType === 'song') {
         if (table.getIsSomeRowsSelected() || table.getIsAllRowsSelected()) {
           return (
@@ -217,7 +232,7 @@ export function DataTableList<TData, TValue>({
 
       return undefined
     },
-    [dataType, showContextMenu, table],
+    [data.length, dataType, pageType, showContextMenu, table],
   )
 
   const handleLeftClick = useCallback(
@@ -383,6 +398,17 @@ export function DataTableList<TData, TValue>({
                     getContextMenuOptions={getContextMenuOptions}
                     dataType={dataType}
                     pageType={pageType}
+                    enableReordering={enableReordering}
+                    isDragging={queueReorder.draggedIndex === row.index}
+                    isDragOver={queueReorder.dragOverIndex === row.index}
+                    onDragStart={(event) =>
+                      queueReorder.onDragStart(event, row.index)
+                    }
+                    onDragOver={(event) =>
+                      queueReorder.onDragOver(event, row.index)
+                    }
+                    onDrop={(event) => queueReorder.onDrop(event, row.index)}
+                    onDragEnd={queueReorder.onDragEnd}
                   />
                 )
               })

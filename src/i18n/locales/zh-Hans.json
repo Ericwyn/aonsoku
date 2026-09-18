@@ -542,7 +542,13 @@
     "title": "队列",
     "clear": "清空队列",
     "open": "打开队列",
-    "close": "关闭队列"
+    "close": "关闭队列",
+    "playNext": "下一首播放",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "moveToStart": "移到队首",
+    "moveToEnd": "移到队尾",
+    "removeSong": "从队列移除"
   },
   "warnings": {
     "reload": "有一首歌曲正在播放！\n你确定要重新加载页面吗？",

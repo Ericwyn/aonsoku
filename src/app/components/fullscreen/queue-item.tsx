@@ -23,9 +23,11 @@ export function QueueItem({
   return (
     <div
       className={clsx([
-        'flex items-center w-[calc(100%-10px)] h-16 text-sm rounded-md cursor-pointer',
+        'flex items-center w-[calc(100%-10px)] h-16 text-sm rounded-md cursor-grab active:cursor-grabbing',
         'bg-black/0 hover:bg-foreground/20',
         'data-[state=active]:bg-foreground data-[state=active]:text-secondary',
+        'data-[dragging=true]:opacity-40',
+        'data-[drag-over=true]:ring-2 data-[drag-over=true]:ring-inset data-[drag-over=true]:ring-primary/70',
       ])}
       style={{
         backfaceVisibility: 'visible',

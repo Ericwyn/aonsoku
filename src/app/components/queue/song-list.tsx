@@ -96,8 +96,9 @@ export function QueueSongList() {
           scrollToIndex={true}
           currentSongIndex={currentSongIndex}
           allowRowSelection={false}
-          showContextMenu={false}
+          showContextMenu={true}
           pageType="queue"
+          enableReordering={true}
         />
       </div>
     </div>

@@ -1,6 +1,9 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useRef } from 'react'
+import { QueueMenuOptions } from '@/app/components/queue/menu-options'
+import { ContextMenuProvider } from '@/app/components/table/context-menu'
 import { ScrollArea } from '@/app/components/ui/scroll-area'
+import { useQueueReorder } from '@/app/hooks/use-queue-reorder'
 import {
   usePlayerActions,
   usePlayerIsPlaying,
@@ -12,6 +15,7 @@ export function FullscreenSongQueue() {
   const { setSongList } = usePlayerActions()
   const { currentList, currentSongIndex, currentSong } = usePlayerSonglist()
   const isPlaying = usePlayerIsPlaying()
+  const queueReorder = useQueueReorder()
 
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -58,24 +62,53 @@ export function FullscreenSongQueue() {
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const entry = currentList[virtualRow.index]
           return (
-            <QueueItem
-              key={entry.id}
-              data-row-index={virtualRow.index}
-              data-state={currentSong.id === entry.id ? 'active' : 'inactive'}
-              index={virtualRow.index}
-              song={entry}
-              isPlaying={currentSong.id === entry.id && isPlaying}
-              onClick={() => {
-                if (currentSong.id !== entry.id) {
-                  setSongList(currentList, virtualRow.index)
+            <ContextMenuProvider
+              key={`${entry.id}-${virtualRow.index}`}
+              options={
+                <QueueMenuOptions
+                  song={entry}
+                  index={virtualRow.index}
+                  queueLength={currentList.length}
+                />
+              }
+            >
+              <QueueItem
+                data-row-index={virtualRow.index}
+                data-state={currentSong.id === entry.id ? 'active' : 'inactive'}
+                data-dragging={
+                  queueReorder.draggedIndex === virtualRow.index
+                    ? 'true'
+                    : 'false'
                 }
-              }}
-              style={{
-                position: 'absolute',
-                top: 0,
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            />
+                data-drag-over={
+                  queueReorder.dragOverIndex === virtualRow.index
+                    ? 'true'
+                    : 'false'
+                }
+                draggable={true}
+                index={virtualRow.index}
+                song={entry}
+                isPlaying={currentSong.id === entry.id && isPlaying}
+                onDragStart={(event) =>
+                  queueReorder.onDragStart(event, virtualRow.index)
+                }
+                onDragOver={(event) =>
+                  queueReorder.onDragOver(event, virtualRow.index)
+                }
+                onDrop={(event) => queueReorder.onDrop(event, virtualRow.index)}
+                onDragEnd={queueReorder.onDragEnd}
+                onClick={() => {
+                  if (currentSong.id !== entry.id) {
+                    setSongList(currentList, virtualRow.index)
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              />
+            </ContextMenuProvider>
           )
         })}
       </div>

@@ -574,7 +574,13 @@
     "title": "Queue",
     "clear": "Clear queue",
     "close": "Close queue",
-    "open": "Open queue"
+    "open": "Open queue",
+    "playNext": "Play next",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "moveToStart": "Move to start",
+    "moveToEnd": "Move to end",
+    "removeSong": "Remove from queue"
   },
   "shortcuts": {
     "modal": {

@@ -341,6 +341,49 @@ export const usePlayerStore = createWithEqualityFn<IPlayerContext>()(
                 get().actions.setPlayingState(true)
               }
             },
+            moveSongInQueue: (fromIndex, toIndex) => {
+              const { currentList, currentSongIndex } = get().songlist
+
+              if (
+                fromIndex === toIndex ||
+                fromIndex < 0 ||
+                toIndex < 0 ||
+                fromIndex >= currentList.length ||
+                toIndex >= currentList.length
+              ) {
+                return
+              }
+
+              const reorderedList = [...currentList]
+              const [movedSong] = reorderedList.splice(fromIndex, 1)
+              reorderedList.splice(toIndex, 0, movedSong)
+
+              let updatedCurrentIndex = currentSongIndex
+              if (fromIndex === currentSongIndex) {
+                updatedCurrentIndex = toIndex
+              } else if (
+                fromIndex < currentSongIndex &&
+                toIndex >= currentSongIndex
+              ) {
+                updatedCurrentIndex -= 1
+              } else if (
+                fromIndex > currentSongIndex &&
+                toIndex <= currentSongIndex
+              ) {
+                updatedCurrentIndex += 1
+              }
+
+              set((state) => {
+                state.songlist.currentList = reorderedList
+                state.songlist.originalList = reorderedList
+                state.songlist.shuffledList = []
+                state.songlist.currentSongIndex = updatedCurrentIndex
+                state.songlist.originalSongIndex = updatedCurrentIndex
+                state.playerState.isShuffleActive = false
+                state.playerState.playbackContext.source = null
+                state.playerState.playbackContext.isSourceModified = true
+              })
+            },
             setPlayRadio: (list, index) => {
               const { mediaType } = get().playerState
               const { radioList, currentSongIndex } = get().songlist
