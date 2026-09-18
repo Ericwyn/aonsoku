@@ -69,7 +69,7 @@ export function createWindow(): void {
       hash: '/',
     })
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+    mainWindow.loadFile(join(app.getAppPath(), 'out/renderer/index.html'), {
       hash: '/',
     })
   }
