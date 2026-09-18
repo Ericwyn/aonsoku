@@ -1,12 +1,12 @@
 import { is, platform } from '@electron-toolkit/utils'
-import { BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import { BrowserWindow, ipcMain, nativeTheme, session, shell } from 'electron'
 import {
   IpcChannels,
   OverlayColors,
   PlayerStatePayload,
 } from '../../preload/types'
-import { isQuitting } from '../index'
 import { tray, updateTray } from '../tray'
+import { isQuitting } from './appState'
 import { colorsState } from './colors'
 import {
   clearDiscordRpcActivity,
@@ -22,6 +22,32 @@ import { setTrayLanguage } from './trayI18n'
 
 export function setupEvents(window: BrowserWindow | null) {
   if (!window) return
+
+  if (is.dev) {
+    window.webContents.on('console-message', (details) => {
+      const location = details.sourceId
+        ? ` (${details.sourceId}:${details.lineNumber})`
+        : ''
+      console.log(`[renderer:${details.level}] ${details.message}${location}`)
+    })
+
+    window.webContents.on(
+      'did-fail-load',
+      (_, errorCode, errorDescription, validatedURL) => {
+        console.error(
+          `[renderer:load] ${errorDescription} (${errorCode}) ${validatedURL}`,
+        )
+      },
+    )
+
+    window.webContents.on('preload-error', (_, preloadPath, error) => {
+      console.error(`[renderer:preload] ${preloadPath}`, error)
+    })
+
+    window.webContents.on('render-process-gone', (_, details) => {
+      console.error(`[renderer:gone] ${details.reason}`, details)
+    })
+  }
 
   window.on('ready-to-show', async () => {
     window.show()
@@ -106,6 +132,11 @@ export function setupIpcEvents(window: BrowserWindow | null) {
   if (!window) return
 
   resetIpcEvents()
+
+  ipcMain.removeHandler(IpcChannels.ClearHttpCache)
+  ipcMain.handle(IpcChannels.ClearHttpCache, async () => {
+    await session.defaultSession.clearCache()
+  })
 
   ipcMain.on(IpcChannels.ToggleFullscreen, (_, isFullscreen: boolean) => {
     window.setFullScreen(isFullscreen)

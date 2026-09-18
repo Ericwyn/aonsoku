@@ -9,8 +9,13 @@ import {
   scrollAreaViewportSelector,
 } from '@/app/components/ui/scroll-area'
 import { subsonic } from '@/service/subsonic'
+import { useAppData } from '@/store/app.store'
 import { useLang } from '@/store/lang.store'
-import { usePlayerRef, usePlayerSonglist } from '@/store/player.store'
+import {
+  useLyricsSettings,
+  usePlayerRef,
+  usePlayerSonglist,
+} from '@/store/player.store'
 import { ILyric } from '@/types/responses/song'
 import { queryKeys } from '@/utils/queryKeys'
 
@@ -30,12 +35,22 @@ interface LyricProps {
 
 export function LyricsTab() {
   const { currentSong } = usePlayerSonglist()
+  const { preferSyncedLyrics } = useLyricsSettings()
+  const { url: serverUrl } = useAppData()
   const { t } = useTranslation()
 
   const { id, artist, title, duration } = currentSong
 
   const { data: lyrics, isLoading } = useQuery({
-    queryKey: [queryKeys.song.lyrics, artist, title, duration],
+    queryKey: [
+      queryKeys.song.lyrics,
+      serverUrl,
+      id,
+      artist,
+      title,
+      duration,
+      preferSyncedLyrics,
+    ],
     queryFn: () =>
       subsonic.lyrics.getLyrics({
         id,

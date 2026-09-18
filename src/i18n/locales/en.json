@@ -786,7 +786,7 @@
         },
         "clearAll": {
           "label": "Clear Caches",
-          "info": "Removes locally cached lyrics, album art, and animated artwork URLs.",
+          "info": "Removes locally cached lyrics, album art, animated artwork URLs, streamed media, and HTTP responses.",
           "button": "Clear All",
           "success": "Caches cleared successfully.",
           "error": "Failed to clear some caches."

@@ -10,7 +10,7 @@ export async function getCachedImage(url: string): Promise<string> {
       return URL.createObjectURL(blob)
     }
 
-    const networkResponse = await fetch(url)
+    const networkResponse = await fetch(url, { cache: 'reload' })
 
     if (!networkResponse.ok) {
       return url

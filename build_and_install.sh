@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 INSTALL=true
-INSTALL_DEPS=true
+INSTALL_DEPS=false
 
 usage() {
   cat <<'EOF'
@@ -15,12 +15,14 @@ Build an Aonsoku Debian package and install it on the current machine.
 Usage: ./build_and_install.sh [options]
 
 Options:
-  --build-only   Build the .deb package without installing it.
-  --skip-deps    Skip pnpm dependency installation.
-  -h, --help     Show this help message.
+  --build-only    Build the .deb package without installing it.
+  --install-deps  Install dependencies before building (skipped by default).
+  --skip-deps     Skip dependency installation (kept for compatibility).
+  -h, --help      Show this help message.
 
 Environment:
-  AONSOKU_SKIP_DEPS=1  Same as --skip-deps.
+  AONSOKU_INSTALL_DEPS=1  Same as --install-deps.
+  AONSOKU_SKIP_DEPS=1     Force dependency installation to be skipped.
 EOF
 }
 
@@ -28,6 +30,9 @@ while (($# > 0)); do
   case "$1" in
     --build-only)
       INSTALL=false
+      ;;
+    --install-deps)
+      INSTALL_DEPS=true
       ;;
     --skip-deps)
       INSTALL_DEPS=false
@@ -44,6 +49,10 @@ while (($# > 0)); do
   esac
   shift
 done
+
+if [[ "${AONSOKU_INSTALL_DEPS:-0}" == "1" ]]; then
+  INSTALL_DEPS=true
+fi
 
 if [[ "${AONSOKU_SKIP_DEPS:-0}" == "1" ]]; then
   INSTALL_DEPS=false
@@ -106,20 +115,36 @@ printf 'Compiling Electron application...\n'
 printf 'Checking that main-process dependencies are bundled...\n'
 node <<'NODE'
 const { builtinModules } = require('node:module')
-const { readFileSync } = require('node:fs')
+const { readFileSync, readdirSync } = require('node:fs')
+const { join } = require('node:path')
 
 const importPattern = /(?:\bfrom\s*|\bimport\s*)["']([^"']+)["']/g
 const builtins = new Set(
   builtinModules.flatMap((name) => [name, name.replace(/^node:/, ''), `node:${name}`]),
 )
 
-for (const bundle of ['out/main/index.js', 'out/preload/index.mjs']) {
+function listBundles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) return listBundles(path)
+    return /\.(?:js|mjs)$/.test(entry.name) ? [path] : []
+  })
+}
+
+for (const bundle of [
+  ...listBundles('out/main'),
+  ...listBundles('out/preload'),
+]) {
   const source = readFileSync(bundle, 'utf8')
   const imports = new Set()
   for (const match of source.matchAll(importPattern)) imports.add(match[1])
 
   const unexpected = [...imports].filter(
-    (name) => name !== 'electron' && !builtins.has(name),
+    (name) =>
+      !name.startsWith('.') &&
+      !name.startsWith('/') &&
+      name !== 'electron' &&
+      !builtins.has(name),
   )
 
   if (unexpected.length > 0) {

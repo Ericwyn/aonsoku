@@ -1,4 +1,4 @@
-import { get, set } from 'idb-keyval'
+import { del, get, set } from 'idb-keyval'
 import { iso6392BTo1, iso6392TTo1 } from 'iso-639-2'
 import { httpClient } from '@/api/httpClient'
 import { useAppStore } from '@/store/app.store'
@@ -11,6 +11,7 @@ import {
   StructuredLyricsResponse,
 } from '@/types/responses/song'
 import { lrclibClient } from '@/utils/appName'
+import { logger } from '@/utils/logger'
 import { checkServerType, getServerExtensions } from '@/utils/servers'
 
 // normalizes the ISO 639 code returned by the server to the BCP 47 language tag recognized by the html lang selector
@@ -45,6 +46,24 @@ interface LRCLibResponse {
   syncedLyrics: string
 }
 
+function lyricDiagnostics(value?: string) {
+  if (!value) return { length: 0, replacementCharacters: 0, preview: '' }
+
+  return {
+    length: value.length,
+    replacementCharacters: value.match(/�/g)?.length ?? 0,
+    preview: value.slice(0, 240).replaceAll('\n', '\\n'),
+  }
+}
+
+function hasInvalidEncoding(value?: string) {
+  return value?.includes('�') ?? false
+}
+
+function logLyrics(stage: string, details: Record<string, unknown>) {
+  logger.info(`[Lyrics] ${stage} ${JSON.stringify(details)}`)
+}
+
 async function getLyrics(getLyricsData: GetLyricsData) {
   const { preferSyncedLyrics } = usePlayerStore.getState().settings.lyrics
   const { songLyricsEnabled } = getServerExtensions()
@@ -66,95 +85,144 @@ async function getLyrics(getLyricsData: GetLyricsData) {
   const cachedLyrics = await readCache(cacheKey)
 
   if (cachedLyrics) {
-    return cachedLyrics
+    const cached = cachedLyrics as ILyric
+    const diagnostics = lyricDiagnostics(cached.value)
+
+    if (!hasInvalidEncoding(cached.value)) {
+      logLyrics('cache hit', {
+        song: getLyricsData,
+        cacheKey,
+        lyrics: diagnostics,
+      })
+      return cachedLyrics
+    }
+
+    logLyrics('discarded corrupt cache entry', {
+      song: getLyricsData,
+      cacheKey,
+      lyrics: diagnostics,
+    })
+    await del(cacheKey)
   }
 
-  // First attempt to retrieve lyrics from the server.
-  // If we know it supports the OpenSubsonic songLyrics extension with timing info, use that.
-  // If the server does not support the extension or the lyrics returned from the server did
-  // not include timing information, fetch them from the LrcLib
+  logLyrics('cache miss', {
+    song: getLyricsData,
+    cacheKey,
+    cacheEnabled,
+    preferSyncedLyrics,
+    songLyricsEnabled,
+  })
 
-  let osUnsyncedLyricsFound: ILyric | undefined
+  // The server owns the choice between embedded tags, sidecar files and any
+  // server-side providers. Prefer every valid server result over LRCLIB.
 
   if (songLyricsEnabled) {
     const response = await httpClient<StructuredLyricsResponse>(
       '/getLyricsBySongId',
       {
         method: 'GET',
+        cache: 'no-store',
         query: {
           id: getLyricsData.id,
         },
       },
     )
 
-    if (response && preferSyncedLyrics) {
+    if (response) {
       const { structuredLyrics } = response.data.lyricsList
 
+      logLyrics('Navidrome getLyricsBySongId response', {
+        song: getLyricsData,
+        variants: structuredLyrics?.map((item) => ({
+          synced: item.synced,
+          lang: item.lang,
+          lineCount: item.line.length,
+          lyrics: lyricDiagnostics(
+            item.line.map((line) => line.value).join('\n'),
+          ),
+        })),
+      })
+
       if (structuredLyrics && structuredLyrics.length > 0) {
-        const syncedLyrics = structuredLyrics.find((lyrics) => lyrics.synced)
+        const validLyrics = structuredLyrics.filter(
+          (lyrics) =>
+            !hasInvalidEncoding(
+              lyrics.line.map((line) => line.value).join('\n'),
+            ),
+        )
+        const syncedLyrics = validLyrics.find((lyrics) => lyrics.synced)
+        const unsyncedLyrics = validLyrics.find((lyrics) => !lyrics.synced)
 
-        if (syncedLyrics) {
-          const serverSyncedLyrics = osStructuredLyricsToILyric(syncedLyrics)
+        if (validLyrics.length !== structuredLyrics.length) {
+          logLyrics('ignored corrupt Navidrome structured lyrics', {
+            ignoredVariants: structuredLyrics.length - validLyrics.length,
+          })
+        }
 
-          writeCache(cacheKey, serverSyncedLyrics)
+        const selectedLyrics = preferSyncedLyrics
+          ? (syncedLyrics ?? unsyncedLyrics)
+          : (unsyncedLyrics ?? syncedLyrics)
 
-          return serverSyncedLyrics
+        if (selectedLyrics) {
+          const serverLyrics = osStructuredLyricsToILyric(selectedLyrics)
+
+          logLyrics('selected Navidrome structured lyrics', {
+            synced: selectedLyrics.synced,
+            lyrics: lyricDiagnostics(serverLyrics.value),
+          })
+
+          writeCache(cacheKey, serverLyrics)
+
+          return serverLyrics
         }
       }
-
-      // save the plain lyrics retrieved from the server
-      osUnsyncedLyricsFound = osStructuredLyricsToILyric(structuredLyrics[0])
     }
-  }
-
-  if (preferSyncedLyrics) {
-    const lyrics = await getLyricsFromLRCLib(getLyricsData)
-
-    if (lyrics.value !== '') {
-      writeCache(cacheKey, lyrics)
-
-      return lyrics
-    }
-  }
-
-  // if the server supported the songLyrics extension and lrc did not have lyrics, we don't need to query the server and lrc again.
-  // so return the plain lyrics if we found them
-  if (osUnsyncedLyricsFound) {
-    writeCache(cacheKey, osUnsyncedLyricsFound)
-
-    return osUnsyncedLyricsFound
   }
 
   const response = await httpClient<LyricsResponse>('/getLyrics', {
     method: 'GET',
+    cache: 'no-store',
     query: {
       artist: getLyricsData.artist,
       title: getLyricsData.title,
     },
   })
 
-  const lyricNotFound =
-    !response || !response?.data.lyrics || !response.data.lyrics.value
+  const legacyLyrics = response?.data.lyrics
+  const legacyLyricsCorrupt = hasInvalidEncoding(legacyLyrics?.value)
+  const lyricNotFound = !legacyLyrics?.value || legacyLyricsCorrupt
 
-  // If the Subsonic API did not return lyrics and the user does not prefer synced lyrics,
-  // fallback to fetching lyrics from the LrcLib.
-  // Note: If `preferSyncedLyrics` is true and we reached this point, it means the LrcLib
-  // does not contains lyrics for the track, so the fallback is unnecessary in that case.
-  if (lyricNotFound && !preferSyncedLyrics) {
-    const lyrics = await getLyricsFromLRCLib(getLyricsData)
+  logLyrics('Navidrome getLyrics response', {
+    song: getLyricsData,
+    found: !lyricNotFound,
+    lyrics: lyricDiagnostics(response?.data.lyrics?.value),
+  })
 
-    if (lyrics.value !== '') {
-      writeCache(cacheKey, lyrics)
-    }
-
-    return lyrics
+  if (legacyLyricsCorrupt) {
+    logLyrics('ignored corrupt Navidrome legacy lyrics', {
+      lyrics: lyricDiagnostics(legacyLyrics?.value),
+    })
   }
 
-  if (response?.data.lyrics) {
-    writeCache(cacheKey, response.data.lyrics)
+  if (legacyLyrics && !legacyLyricsCorrupt) {
+    logLyrics('selected Navidrome legacy lyrics', {
+      lyrics: lyricDiagnostics(legacyLyrics.value),
+    })
+    writeCache(cacheKey, legacyLyrics)
+
+    return legacyLyrics
   }
 
-  return response?.data.lyrics
+  const lrclibLyrics = await getLyricsFromLRCLib(getLyricsData)
+
+  if (lrclibLyrics.value !== '') {
+    logLyrics('selected LRCLIB fallback lyrics', {
+      lyrics: lyricDiagnostics(lrclibLyrics.value),
+    })
+    writeCache(cacheKey, lrclibLyrics)
+  }
+
+  return lrclibLyrics
 }
 
 async function getLyricsFromLRCLib(getLyricsData: GetLyricsData) {
@@ -171,6 +239,10 @@ async function getLyricsFromLRCLib(getLyricsData: GetLyricsData) {
     : getLyricsData.artist
 
   if (!lrclib.enabled || window.DISABLE_LRCLIB) {
+    logLyrics('LRCLIB skipped', {
+      enabledInSettings: lrclib.enabled,
+      disabledByEnvironment: Boolean(window.DISABLE_LRCLIB),
+    })
     return {
       artist,
       title,
@@ -198,6 +270,7 @@ async function getLyricsFromLRCLib(getLyricsData: GetLyricsData) {
     url.search = params.toString()
 
     const request = await fetch(url.toString(), {
+      cache: 'no-store',
       headers: {
         'Lrclib-Client': lrclibClient,
       },
@@ -206,6 +279,12 @@ async function getLyricsFromLRCLib(getLyricsData: GetLyricsData) {
 
     if (response) {
       const { syncedLyrics, plainLyrics } = response
+
+      logLyrics('LRCLIB response', {
+        song: getLyricsData,
+        synced: lyricDiagnostics(syncedLyrics),
+        plain: lyricDiagnostics(plainLyrics),
+      })
 
       let finalLyric = ''
 
@@ -222,7 +301,9 @@ async function getLyricsFromLRCLib(getLyricsData: GetLyricsData) {
         lang: 'xxx',
       }
     }
-  } catch {}
+  } catch (error) {
+    logger.error('[Lyrics] LRCLIB request failed', error)
+  }
 
   return {
     artist,
@@ -241,12 +322,21 @@ function getLyricsCacheKey(
   preferSyncedLyrics: boolean,
   songLyricsEnabled?: boolean,
 ) {
-  const { artist, title } = getLyricsData
+  const { id, artist, title } = getLyricsData
+  const serverUrl = useAppStore.getState().data.url
 
   const type = preferSyncedLyrics ? 'synced' : 'plain'
   const serverExtension = songLyricsEnabled ? 'internal' : 'external'
 
-  const keys = ['lyrics', artist, title, type, serverExtension]
+  const keys = [
+    'lyrics',
+    encodeURIComponent(serverUrl),
+    id,
+    artist,
+    title,
+    type,
+    serverExtension,
+  ]
 
   return keys.join(':')
 }

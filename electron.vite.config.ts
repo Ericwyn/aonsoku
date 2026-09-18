@@ -9,7 +9,7 @@ export default defineConfig({
       minify: 'terser',
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'electron/main/index.ts'),
+          index: resolve(__dirname, 'electron/main/bootstrap.ts'),
         },
       },
       externalizeDeps: {
@@ -40,6 +40,11 @@ export default defineConfig({
   renderer: {
     root: '.',
     plugins: [react()],
+    server: {
+      // The Electron development shell uses file:// so it can share the
+      // installed app's origin-scoped storage.
+      cors: true,
+    },
     resolve: {
       alias: {
         '@': resolve(__dirname, './src'),

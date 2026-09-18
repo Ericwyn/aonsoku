@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aonsoku</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      const server = new URLSearchParams(window.location.search).get('server')
+
+      if (!server) {
+        throw new Error('Missing Vite development server URL')
+      }
+
+      const baseUrl = server.replace(/\/$/, '')
+      await import(`${baseUrl}/@vite/client`)
+      const RefreshRuntime = (await import(`${baseUrl}/@react-refresh`)).default
+      RefreshRuntime.injectIntoGlobalHook(window)
+      window.$RefreshReg$ = () => {}
+      window.$RefreshSig$ = () => (type) => type
+      window.__vite_plugin_react_preamble_installed__ = true
+      await import(`${baseUrl}/src/main.tsx`)
+
+      if (new URLSearchParams(window.location.search).get('debugLyrics') === '1') {
+        const [{ usePlayerStore }, { lyrics }] = await Promise.all([
+          import(`${baseUrl}/src/store/player.store.ts`),
+          import(`${baseUrl}/src/service/lyrics.ts`),
+        ])
+
+        const diagnose = async () => {
+          const song = usePlayerStore.getState().songlist.currentSong
+          if (!song?.id) return
+
+          console.info(
+            `[Lyrics] running requested diagnostic for ${song.artist} - ${song.title}`,
+          )
+          await lyrics.getLyrics(song)
+        }
+
+        if (usePlayerStore.persist.hasHydrated()) {
+          await diagnose()
+        } else {
+          usePlayerStore.persist.onFinishHydration(diagnose)
+        }
+      }
+    </script>
+  </body>
+</html>

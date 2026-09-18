@@ -110,6 +110,7 @@ export function getSimpleCoverArtUrl(
   id?: string,
   type: CoverArt = 'album',
   size = '300',
+  cacheBustToken?: string,
 ): string {
   if (!id) {
     // everything except artists uses the same default cover art
@@ -117,15 +118,16 @@ export function getSimpleCoverArtUrl(
     return `/default_${resolvedType}_art.png`
   }
 
-  return getUrl('getCoverArt', { id, size })
+  return getUrl('getCoverArt', { id, size, _cb: cacheBustToken })
 }
 
 export async function getCoverArtUrl(
   id?: string,
   type: CoverArt = 'album',
   size = '300',
+  cacheBustToken?: string,
 ): Promise<string> {
-  const url = getSimpleCoverArtUrl(id, type, size)
+  const url = getSimpleCoverArtUrl(id, type, size, cacheBustToken)
 
   if (!id) {
     return url
