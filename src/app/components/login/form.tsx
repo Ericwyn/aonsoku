@@ -41,6 +41,7 @@ import { Password } from '@/app/components/ui/password'
 import { ROUTES } from '@/routes/routesList'
 import { useAppActions, useAppData } from '@/store/app.store'
 import { isDesktop } from '@/utils/desktop'
+import { queryKeys } from '@/utils/queryKeys'
 import { removeSlashFromUrl } from '@/utils/removeSlashFromUrl'
 
 const loginSchema = z.object({
@@ -101,7 +102,12 @@ export function LoginForm() {
     })
 
     if (status) {
-      await queryClient.invalidateQueries()
+      // Refresh server data when the library mounts, without waiting for
+      // unrelated background work (such as the desktop update check).
+      await queryClient.invalidateQueries({
+        refetchType: 'none',
+        predicate: (query) => query.queryKey[0] !== queryKeys.update.check,
+      })
       toast.success(t('toast.server.success'))
       navigate(ROUTES.LIBRARY.HOME, { replace: true })
     } else {
