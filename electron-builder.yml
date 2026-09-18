@@ -7,6 +7,10 @@ artifactName: '${productName}-v${version}-${os}-${arch}.${ext}'
 directories:
   buildResources: build
 
+# electron-vite bundles all runtime dependencies. Returning false from this
+# hook tells electron-builder not to inspect or copy the pnpm dependency tree.
+beforeBuild: ./electron/build/beforeBuild.cjs
+
 files:
   - '!**/*'
   - 'out/**'

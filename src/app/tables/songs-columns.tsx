@@ -207,6 +207,26 @@ export function songsColumns(): ColumnDefType<ISong>[] {
       },
     },
     {
+      id: 'created',
+      accessorKey: 'created',
+      style: {
+        width: 180,
+        maxWidth: 180,
+      },
+      className: 'hidden 2xl:flex',
+      enableSorting: true,
+      sortingFn: 'datetime',
+      header: ({ column, table }) => (
+        <MemoDataTableColumnHeader column={column} table={table}>
+          {i18n.t('table.columns.added')}
+        </MemoDataTableColumnHeader>
+      ),
+      cell: ({ row }) => {
+        const { created } = row.original
+        return created ? dateTime(created).format('L') : ''
+      },
+    },
+    {
       id: 'bpm',
       accessorKey: 'bpm',
       header: i18n.t('table.columns.bpm'),

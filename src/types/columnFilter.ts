@@ -8,6 +8,7 @@ export type ColumnFilter =
   | 'duration'
   | 'playCount'
   | 'played'
+  | 'created'
   | 'bpm'
   | 'bitRate'
   | 'contentType'

@@ -12,6 +12,7 @@ export interface IServerConfig {
   protocolVersion?: string
   serverType?: string
   extensionsSupported?: Record<string, number[]>
+  nativeToken?: string
 }
 
 export type PageViewType = 'grid' | 'table'

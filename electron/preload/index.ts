@@ -62,6 +62,9 @@ const api: IAonsokuAPI = {
   saveAppSettings: (payload) => {
     ipcRenderer.send(IpcChannels.SaveAppSettings, payload)
   },
+  updateLanguage: (language) => {
+    ipcRenderer.send(IpcChannels.UpdateLanguage, language)
+  },
   checkForUpdates: () => ipcRenderer.invoke(IpcChannels.CheckForUpdates),
   downloadUpdate: () => ipcRenderer.send(IpcChannels.DownloadUpdate),
   quitAndInstall: () => ipcRenderer.send(IpcChannels.QuitAndInstall),

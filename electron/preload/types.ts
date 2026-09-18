@@ -27,6 +27,7 @@ export enum IpcChannels {
   SetDiscordRpcActivity = 'set-discord-rpc-activity',
   ClearDiscordRpcActivity = 'clear-discord-rpc-activity',
   SaveAppSettings = 'save-app-settings',
+  UpdateLanguage = 'update-language',
   CheckForUpdates = 'check-for-updates',
   DownloadUpdate = 'download-update',
   QuitAndInstall = 'quit-and-install',
@@ -81,6 +82,7 @@ export interface IAonsokuAPI {
   setDiscordRpcActivity: (payload: RpcPayload) => void
   clearDiscordRpcActivity: () => void
   saveAppSettings: (payload: ISettingPayload) => void
+  updateLanguage: (language: string) => void
   checkForUpdates: () => Promise<UpdateCheckResult | null>
   downloadUpdate: () => void
   quitAndInstall: () => void

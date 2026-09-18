@@ -4,6 +4,7 @@ import { devtools, persist, subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { shallow } from 'zustand/shallow'
 import { createWithEqualityFn } from 'zustand/traditional'
+import { navidromeLogin } from '@/api/navidrome'
 import { pingServer } from '@/api/pingServer'
 import { queryServerInfo } from '@/api/queryServerInfo'
 import { AuthType, IAppContext, IServerConfig } from '@/types/serverConfig'
@@ -53,6 +54,7 @@ export const useAppStore = createWithEqualityFn<IAppContext>()(
             hideServer: HIDE_SERVER ?? false,
             lockUser: hasValidConfig,
             songCount: null,
+            nativeToken: undefined,
           },
           accounts: {
             discord: {
@@ -346,6 +348,10 @@ export const useAppStore = createWithEqualityFn<IAppContext>()(
                 const serverInfo = await queryServerInfo(url)
 
                 if (canConnect) {
+                  const nativeToken =
+                    serverInfo.serverType === 'navidrome'
+                      ? await navidromeLogin(url, username, password)
+                      : undefined
                   set((state) => {
                     state.data.url = url
                     state.data.username = username
@@ -356,6 +362,7 @@ export const useAppStore = createWithEqualityFn<IAppContext>()(
                     state.data.isServerConfigured = true
                     state.data.extensionsSupported =
                       serverInfo.extensionsSupported
+                    state.data.nativeToken = nativeToken
                   })
                   return true
                 }
@@ -377,6 +384,7 @@ export const useAppStore = createWithEqualityFn<IAppContext>()(
                 state.data.serverType = 'subsonic'
                 state.data.songCount = null
                 state.data.extensionsSupported = {}
+                state.data.nativeToken = undefined
                 state.pages.showInfoPanel = true
                 state.pages.hideArtistsSection = HIDE_ARTISTS_SECTION ?? false
                 state.pages.hideSongsSection = HIDE_SONGS_SECTION ?? false

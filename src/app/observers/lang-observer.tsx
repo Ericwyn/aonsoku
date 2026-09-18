@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLang } from '@/store/lang.store'
+import { isDesktop } from '@/utils/desktop'
 
 export function LangObserver() {
   const { i18n } = useTranslation()
@@ -24,6 +25,7 @@ export function LangObserver() {
     if (langCode) {
       i18n.changeLanguage(langCode)
       setLangOnHtml(langCode)
+      if (isDesktop()) window.api.updateLanguage(langCode)
     }
   }, [i18n, langCode, setLangOnHtml])
 

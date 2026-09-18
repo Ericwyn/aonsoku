@@ -19,6 +19,7 @@ export default defineConfig({
           'electron-dl',
           'electron-updater',
           'discord-rpc',
+          'i18next',
         ],
       },
     },

@@ -26,6 +26,15 @@
     "about": "About",
     "serverLogout": "Logout"
   },
+  "tray": {
+    "previous": "Previous",
+    "play": "Play",
+    "pause": "Pause",
+    "next": "Next",
+    "hide": "Hide",
+    "show": "Show",
+    "quit": "Quit"
+  },
   "generic": {
     "seeMore": "See more",
     "showDetails": "Show details",
@@ -132,6 +141,13 @@
   },
   "songs": {
     "list": {
+      "sort": {
+        "field": "Sort songs",
+        "added": "Date added",
+        "plays": "Play count",
+        "ascending": "Ascending",
+        "descending": "Descending"
+      },
       "search": {
         "placeholder": "Search songs…"
       },
@@ -316,6 +332,7 @@
       "year": "Year",
       "duration": "Duration",
       "plays": "Plays",
+      "added": "Added",
       "lastPlayed": "Last played",
       "bpm": "BPM",
       "bitrate": "Bitrate",

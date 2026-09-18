@@ -12,6 +12,7 @@ import {
 import { sendPlayerEvents } from './core/playerEvents'
 import { playerState } from './core/playerState'
 import { resourcesPath } from './core/taskbar'
+import { getTrayTranslation } from './core/trayI18n'
 import { mainWindow } from './window'
 
 const traySpacer = Array.from({ length: 30 }).join(' ')
@@ -103,7 +104,7 @@ export function updateTray(title?: string) {
       type: 'separator',
     },
     {
-      label: 'Previous',
+      label: getTrayTranslation('previous'),
       type: 'normal',
       enabled: hasPrevious,
       ...(platform.isMacOS
@@ -117,7 +118,7 @@ export function updateTray(title?: string) {
       },
     },
     {
-      label: isPlaying ? 'Pause' : 'Play',
+      label: getTrayTranslation(isPlaying ? 'pause' : 'play'),
       type: 'normal',
       enabled: hasSonglist,
       ...(platform.isMacOS
@@ -131,7 +132,7 @@ export function updateTray(title?: string) {
       },
     },
     {
-      label: 'Next',
+      label: getTrayTranslation('next'),
       type: 'normal',
       enabled: hasNext,
       ...(platform.isMacOS
@@ -148,7 +149,7 @@ export function updateTray(title?: string) {
       type: 'separator',
     },
     {
-      label: isVisible ? 'Hide' : 'Show',
+      label: getTrayTranslation(isVisible ? 'hide' : 'show'),
       click: () => {
         if (!mainWindow || mainWindow.isDestroyed()) return
 
@@ -162,7 +163,7 @@ export function updateTray(title?: string) {
       },
     },
     {
-      label: 'Quit',
+      label: getTrayTranslation('quit'),
       click: () => {
         if (tray) tray.destroy()
         if (mainWindow) mainWindow.destroy()

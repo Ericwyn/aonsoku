@@ -1,5 +1,12 @@
+import {
+  navidromeSongSearch,
+  SongSortField,
+  SongSortOrder,
+} from '@/api/navidrome'
 import { SearchQueryOptions } from '@/service/search'
 import { subsonic } from '@/service/subsonic'
+import { useAppStore } from '@/store/app.store'
+import { ISong } from '@/types/responses/song'
 
 const emptyResponse = { songs: [], nextOffset: null }
 
@@ -25,6 +32,96 @@ export async function songsSearch(params: SongSearchParams) {
   return {
     songs: response.song,
     nextOffset,
+  }
+}
+
+interface SortedSongSearchParams extends SongSearchParams {
+  sort: SongSortField
+  order: SongSortOrder
+  artistId?: string
+}
+
+function sortSongs(
+  songs: Awaited<ReturnType<typeof songsSearch>>['songs'],
+  sort: SongSortField,
+  order: SongSortOrder,
+) {
+  const direction = order === 'ASC' ? 1 : -1
+
+  return [...songs].sort((a, b) => {
+    const first =
+      sort === 'play_count'
+        ? (a.playCount ?? 0)
+        : new Date(a.created || 0).getTime()
+    const second =
+      sort === 'play_count'
+        ? (b.playCount ?? 0)
+        : new Date(b.created || 0).getTime()
+
+    return (first - second) * direction
+  })
+}
+
+async function getAllMatchingSongs(params: SortedSongSearchParams) {
+  if (params.artistId) {
+    const result = await getArtistAllSongs(params.artistId)
+    return sortSongs(result.songs, params.sort, params.order)
+  }
+
+  const songs: ISong[] = []
+  const pageSize = 500
+  let offset = 0
+
+  while (true) {
+    const page = await songsSearch({
+      query: params.query,
+      songCount: pageSize,
+      songOffset: offset,
+    })
+    songs.push(...page.songs)
+    if (page.nextOffset === null) break
+    offset = page.nextOffset
+  }
+
+  return sortSongs(songs, params.sort, params.order)
+}
+
+export async function sortedSongsSearch(params: SortedSongSearchParams) {
+  const { url, nativeToken, serverType } = useAppStore.getState().data
+
+  if (serverType === 'navidrome' && nativeToken) {
+    try {
+      const result = await navidromeSongSearch({
+        baseUrl: url,
+        token: nativeToken,
+        offset: params.songOffset,
+        count: params.songCount,
+        sort: params.sort,
+        order: params.order,
+        query: params.query,
+        artistId: params.artistId,
+      })
+
+      if (result.refreshedToken) {
+        useAppStore.setState((state) => {
+          state.data.nativeToken = result.refreshedToken
+        })
+      }
+
+      return result
+    } catch (error) {
+      console.warn(
+        'Native Navidrome sorting failed; using Subsonic fallback.',
+        error,
+      )
+    }
+  }
+
+  if (params.songOffset > 0) return emptyResponse
+
+  return {
+    songs: await getAllMatchingSongs(params),
+    nextOffset: null,
   }
 }
 

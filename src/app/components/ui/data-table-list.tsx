@@ -2,6 +2,7 @@ import {
   ColumnFiltersState,
   getCoreRowModel,
   getSortedRowModel,
+  OnChangeFn,
   Row,
   RowData,
   SortingFn,
@@ -64,6 +65,9 @@ interface DataTableProps<TData, TValue> {
   hasNextPage?: boolean
   scrollToIndex?: boolean
   currentSongIndex?: number
+  enableSorting?: boolean
+  sorting?: SortingState
+  onSortingChange?: OnChangeFn<SortingState>
 }
 
 export function DataTableList<TData, TValue>({
@@ -81,6 +85,9 @@ export function DataTableList<TData, TValue>({
   hasNextPage,
   scrollToIndex = false,
   currentSongIndex,
+  enableSorting = false,
+  sorting: controlledSorting,
+  onSortingChange,
 }: DataTableProps<TData, TValue>) {
   const newColumns = columns.filter((column) => {
     return columnFilter?.includes(column.id as ColumnFilter)
@@ -88,6 +95,7 @@ export function DataTableList<TData, TValue>({
 
   const [columnSearch, setColumnSearch] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+  const activeSorting = controlledSorting ?? sorting
   const [rowSelection, setRowSelection] = useState({})
   const [lastRowSelected, setLastRowSelected] = useState<number | null>(null)
 
@@ -106,10 +114,12 @@ export function DataTableList<TData, TValue>({
       columns: columnFilter ? newColumns : columns,
       getCoreRowModel: getCoreRowModel(),
       onColumnFiltersChange: setColumnSearch,
-      onSortingChange: setSorting,
-      getSortedRowModel: getSortedRowModel(),
+      onSortingChange: onSortingChange ?? setSorting,
+      ...(controlledSorting
+        ? { manualSorting: true }
+        : { getSortedRowModel: getSortedRowModel() }),
       onRowSelectionChange: setRowSelection,
-      enableSorting: false,
+      enableSorting,
       sortingFns: {
         customSortFn: <T extends { original: Record<string, string> }>(
           rowA: T,
@@ -124,7 +134,7 @@ export function DataTableList<TData, TValue>({
       },
       state: {
         columnFilters: columnSearch,
-        sorting,
+        sorting: activeSorting,
         rowSelection,
       },
     }),
@@ -135,7 +145,10 @@ export function DataTableList<TData, TValue>({
       columnFilter,
       handlePlaySong,
       columnSearch,
-      sorting,
+      activeSorting,
+      controlledSorting,
+      enableSorting,
+      onSortingChange,
       rowSelection,
     ],
   )
